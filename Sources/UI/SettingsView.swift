@@ -23,7 +23,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
-            GroupBox("Permissions — all required") {
+            GroupBox("Permissions") {
                 VStack(spacing: 10) {
                     permissionRow(
                         title: "Microphone",
