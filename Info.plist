@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Dictation</string>
+	<key>CFBundleDisplayName</key>
+	<string>Dictation</string>
+	<key>CFBundleExecutable</key>
+	<string>Dictation</string>
+	<key>CFBundleIdentifier</key>
+	<string>dev.dictation.app</string>
+	<key>CFBundleIconFile</key>
+	<string>Dictation.icns</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Dictation needs microphone access to hear what you say.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Dictation uses speech recognition to turn your voice into text.</string>
+</dict>
+</plist>
