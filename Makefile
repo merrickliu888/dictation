@@ -40,6 +40,14 @@ app: $(SOURCES) Package.swift Info.plist Dictation.entitlements $(ICON_FILE)
 	@plutil -replace CFBundleIdentifier -string "$(BUNDLE_ID)" "$(CONTENTS)/Info.plist"
 	@codesign --force --options runtime --sign "$(CODESIGN_IDENTITY)" --entitlements Dictation.entitlements "$(APP_BUNDLE)"
 	@echo "Built $(APP_BUNDLE)"
+	@# Ad-hoc signing keys the Accessibility grant to the binary's hash, so each
+	@# rebuild invalidates it while the stale row lingers in System Settings.
+	@# Clear it so the new build re-prompts instead of silently staying untrusted.
+	@if [ "$(CODESIGN_IDENTITY)" = "-" ]; then \
+		tccutil reset Accessibility "$(BUNDLE_ID)" >/dev/null 2>&1 \
+			&& echo "Reset Accessibility permission for $(BUNDLE_ID) (ad-hoc build); re-grant on next launch" \
+			|| echo "Could not reset Accessibility permission for $(BUNDLE_ID); remove and re-add it in System Settings"; \
+	fi
 
 $(ICON_FILE): $(ICON_SOURCE)
 	@rm -rf "$(ICONSET_DIR)"

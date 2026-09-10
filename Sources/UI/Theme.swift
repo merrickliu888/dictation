@@ -10,7 +10,6 @@ enum Theme {
     static let failure = Color(red: 0.92, green: 0.44, blue: 0.40)
 
     static let cornerRadius: CGFloat = 12
-    static let pillRadius: CGFloat = 26
 }
 
 /// NSVisualEffectView-backed background for overlay surfaces.
