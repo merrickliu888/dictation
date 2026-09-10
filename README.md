@@ -1,7 +1,7 @@
 <div align="center">
   <img src="Assets/dictation-logo-transparent.png" alt="dictation-logo" width="75">
   <h1>Dictation</h1>
-  <p>A minimal, macOS native, hold-to-talk dictation tool. Speak into any text field.</p>
+  <p>A minimal, macOS native, dictation tool. Speak into any text field.</p>
 </div>
 
 ## Quick Start
@@ -44,19 +44,6 @@ Dictation uses the first file that exists: `$DICTATION_CONFIG`, then `~/.config/
 
 Accessibility permission covers both the tap and the paste. The app is signed ad hoc by `make`, so a rebuild changes its identity: if `fn` stops responding after a rebuild, remove Dictation from the Accessibility list and add it again.
 
-## Development
-
-```
-make test   # core: shortcut parsing, config file, key-handling rules
-make app    # build/Dictation.app
-make run
-```
-
 ## Privacy
 
 Everything runs locally. Voice transcription uses Apple's Speech framework on device; nothing leaves your Mac.
-
-## Inspirations
-- [Wispr Flow](https://wisprflow.ai)
-- [FreeFlow](https://github.com/zachlatta/freeflow)
-- [Minimal](https://github.com/merrickliu888/minimal)
