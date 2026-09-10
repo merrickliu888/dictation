@@ -289,6 +289,50 @@ func testShortcutConfigRebinding() {
     expect(try! String(contentsOf: file, encoding: .utf8).hasPrefix("# Dictation shortcuts."), "documentation came along")
 }
 
+func testAppearanceConfig() {
+    expectEqual(ShortcutConfig.defaults.appearance, .system, "default follows the system")
+    expectEqual(ShortcutConfig.parse(toml: "[appearance]\ntheme = \"dark\"\n").appearance, .dark, "dark")
+    expectEqual(ShortcutConfig.parse(toml: "[appearance]\ntheme = \"Light\"\n").appearance, .light, "case-insensitive")
+    expect(ShortcutConfig.parse(toml: "[appearance]\ntheme = \"dark\"\n").warnings.isEmpty, "clean")
+
+    let bad = ShortcutConfig.parse(toml: "[appearance]\ntheme = \"blue\"\nfont = \"x\"\n")
+    expectEqual(bad.appearance, .system, "unknown value keeps the default")
+    expect(bad.warnings.contains { $0.contains("theme = \"blue\"") && $0.contains("system, light, dark") },
+           "explains the choices: \(bad.warnings)")
+    expect(bad.warnings.contains { $0.contains("unknown appearance setting 'font'") }, "unknown key")
+    expect(!bad.warnings.contains { $0.contains("[appearance]") }, "the table itself is known")
+
+    // The template documents it, commented out; uncommenting equals the default.
+    let template = ShortcutConfig.template
+    expect(template.contains("[appearance]"), "template has the table")
+    expect(template.contains("# theme = \"system\""), "template shows the default")
+    expectEqual(ShortcutConfig.parse(toml: template.replacingOccurrences(of: "# theme =", with: "theme =")).appearance,
+                .system, "uncommented template is the default")
+
+    // Setting it edits in place, like rebinding.
+    let fromTemplate = ShortcutConfig.settingAppearance(.dark, in: template)
+    expectEqual(ShortcutConfig.parse(toml: fromTemplate).appearance, .dark, "template edit takes effect")
+    expectEqual(ShortcutConfig.parse(toml: fromTemplate).bindings, ShortcutConfig.defaults.bindings, "shortcuts untouched")
+    expectEqual(fromTemplate.components(separatedBy: "\n").count, template.components(separatedBy: "\n").count,
+                "no lines added or lost")
+    expect(fromTemplate.contains("theme = \"dark\"  # system, light, dark"), "line keeps the choices")
+
+    let sparse = "[shortcuts]\nhold = \"f5\"\n"
+    expectEqual(ShortcutConfig.settingAppearance(.light, in: sparse),
+                "[shortcuts]\nhold = \"f5\"\n\n[appearance]\ntheme = \"light\"  # system, light, dark\n",
+                "a missing table is appended")
+
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("dictation-tests-\(UUID().uuidString)")
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let file = directory.appendingPathComponent("config.toml")
+    try! ShortcutConfig.setAppearance(.dark, at: file)
+    try! ShortcutConfig.rebind(.hold, to: Trigger(f5), at: file)
+    let onDisk = ShortcutConfig.load(searchPaths: [file])
+    expectEqual(onDisk.appearance, .dark, "theme survives a later shortcut rebind")
+    expectEqual(onDisk[.hold], Trigger(f5), "and the rebind took")
+}
+
 // MARK: - Interaction model
 
 func defaultModel() -> DictationInteractionModel {
@@ -412,6 +456,7 @@ struct TestRunner {
         testShortcutConfigTemplate()
         testShortcutConfigSeeding()
         testShortcutConfigRebinding()
+        testAppearanceConfig()
         testHoldToDictate()
         testDoubleTapLocksHandsFree()
         testDoubleTapWindowAndThreshold()

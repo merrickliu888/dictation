@@ -80,3 +80,15 @@ extension Shortcut {
         keyCode == Int64(self.keyCode) && ShortcutModifiers(flags) == modifiers
     }
 }
+
+extension Appearance {
+
+    /// What to set `NSApp.appearance` to; nil follows the system.
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light: return NSAppearance(named: .aqua)
+        case .dark: return NSAppearance(named: .darkAqua)
+        }
+    }
+}

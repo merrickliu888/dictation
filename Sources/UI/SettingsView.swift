@@ -6,6 +6,8 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var permissions: PermissionsManager
     @ObservedObject var recorder: ShortcutRecorder
+    /// Called with the theme the user picked; the owner writes it to config.
+    var onAppearanceChange: (Appearance) -> Void
     @State private var scratch = ""
 
     var body: some View {
@@ -72,6 +74,33 @@ struct SettingsView: View {
                         Divider().opacity(0.4)
                         fnNote
                     }
+                }
+                .padding(.vertical, 4)
+            }
+
+            GroupBox("Appearance") {
+                HStack {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Theme").font(.system(size: 12, weight: .medium))
+                        Text("For the settings window and the dictation pill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Picker(
+                        "Theme",
+                        selection: Binding(
+                            get: { config.appearance },
+                            set: { onAppearanceChange($0) }
+                        )
+                    ) {
+                        ForEach(Appearance.allCases, id: \.self) { appearance in
+                            Text(appearance.rawValue.capitalized).tag(appearance)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
                 }
                 .padding(.vertical, 4)
             }
@@ -209,9 +238,9 @@ struct SettingsView: View {
 
     private func shortcutsSummary(_ config: ShortcutConfig) -> String {
         guard let source = config.source else {
-            return "Shortcuts: defaults — Change writes \(abbreviated(ShortcutConfig.userConfigPath()))."
+            return "Config: defaults — Change and Theme write \(abbreviated(ShortcutConfig.userConfigPath()))."
         }
-        return "Shortcuts: \(abbreviated(source)) — Change edits it, or edit by hand and Reload Config."
+        return "Config: \(abbreviated(source)) — Change and Theme edit it, or edit by hand and Reload Config."
     }
 
     private func abbreviated(_ url: URL) -> String {

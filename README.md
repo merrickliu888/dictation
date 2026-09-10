@@ -32,6 +32,13 @@ Shortcuts live in `~/.config/dictation/config.toml`, written on first launch wit
 
 > Open `~/.config/dictation/config.toml` and make hold-to-dictate the right option key.
 
+The same file holds the theme. The setup window's **Theme** picker writes it, or set it by hand:
+
+```toml
+[appearance]
+theme = "dark"   # system, light, dark
+```
+
 Pick a hand edit up with **Reload Config** in the menu bar; no restart needed.
 
 Dictation uses the first file that exists: `$DICTATION_CONFIG`, then `~/.config/dictation/config.toml` (`$XDG_CONFIG_HOME` is honoured), then `~/Library/Application Support/Dictation/config.toml`.

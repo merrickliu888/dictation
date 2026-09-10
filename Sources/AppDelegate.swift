@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ShortcutConfig.seedUserConfigIfMissing()
         Shortcuts.reload()
         controller.reloadShortcuts()
+        applyAppearance()
 
         controller.canDictate = { [weak self] in
             self?.permissions.allGranted ?? false
@@ -65,8 +66,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func reloadConfig() {
         Shortcuts.reload()
         controller.reloadShortcuts()
+        applyAppearance()
         if keys.isRunning { keys.restart() }
         recorder.noteConfigChanged()
+    }
+
+    /// Every window — settings, pill, menu — takes the configured theme.
+    private func applyAppearance() {
+        NSApp.appearance = Shortcuts.config.appearance.nsAppearance
+    }
+
+    private func setAppearance(_ appearance: Appearance) {
+        do {
+            try ShortcutConfig.setAppearance(appearance)
+        } catch {
+            NSLog("Appearance: could not save theme (%@)", String(describing: error))
+        }
+        reloadConfig()
     }
 
     private func rebind(_ action: ShortcutAction, to trigger: Trigger) {
@@ -87,21 +103,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func showSettingsWindow() {
         if settingsWindow == nil {
-            let view = SettingsView(recorder: recorder)
-                .environmentObject(permissions)
+            let view = SettingsView(recorder: recorder) { [weak self] appearance in
+                self?.setAppearance(appearance)
+            }
+            .environmentObject(permissions)
             let hosting = NSHostingController(rootView: view)
             // Don't let SwiftUI size the window via constraints: the content
             // height changes as checks complete, and the resulting layout
             // feedback loop trips AppKit's constraint-pass limit (crash).
             hosting.sizingOptions = []
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 540, height: 640),
+                contentRect: NSRect(x: 0, y: 0, width: 540, height: 710),
                 styleMask: [.titled, .closable, .miniaturizable],
                 backing: .buffered,
                 defer: false
             )
             window.contentViewController = hosting
-            window.setContentSize(NSSize(width: 540, height: 640))
+            window.setContentSize(NSSize(width: 540, height: 710))
             window.title = "Dictation"
             window.isReleasedWhenClosed = false
             window.center()

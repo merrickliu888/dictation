@@ -306,6 +306,29 @@ enum ShortcutAction: String, CaseIterable {
     }
 }
 
+// MARK: - Appearance
+
+/// Whether the app's windows and pill follow the system look or force one.
+/// The raw value is what `theme` is set to under `[appearance]`.
+enum Appearance: String, CaseIterable {
+    case system
+    case light
+    case dark
+
+    static let `default` = Appearance.system
+
+    var summary: String {
+        switch self {
+        case .system: return "follow the system setting"
+        case .light: return "always light"
+        case .dark: return "always dark"
+        }
+    }
+
+    /// The comment written next to `theme` in config.toml.
+    static let choices = allCases.map(\.rawValue).joined(separator: ", ")
+}
+
 // MARK: - Config
 
 /// The shortcut table the app runs on: defaults, overridden by whatever a
@@ -313,6 +336,8 @@ enum ShortcutAction: String, CaseIterable {
 /// mention, or binds badly, keeps its default.
 struct ShortcutConfig {
     private(set) var bindings: [ShortcutAction: Trigger]
+    /// `theme` under `[appearance]`; system unless the file says otherwise.
+    private(set) var appearance: Appearance = .default
     /// Problems found while loading, surfaced in Settings and the log.
     private(set) var warnings: [String] = []
     /// The file the overrides came from; nil when none was found.
@@ -331,6 +356,8 @@ struct ShortcutConfig {
 
     // MARK: Parsing
 
+    private static let knownTables: Set<String> = ["shortcuts", "appearance"]
+
     static func parse(toml text: String, source: URL? = nil) -> ShortcutConfig {
         var config = ShortcutConfig()
         config.source = source
@@ -342,7 +369,7 @@ struct ShortcutConfig {
             return config
         }
 
-        for table in document.keys.sorted() where table != "shortcuts" {
+        for table in document.keys.sorted() where !knownTables.contains(table) {
             guard let entries = document[table], !entries.isEmpty else { continue }
             config.warnings.append(
                 "ignoring unknown section '\(table.isEmpty ? "top level" : "[\(table)]")'")
@@ -370,6 +397,19 @@ struct ShortcutConfig {
             } catch {
                 config.warnings.append("\(name) = \"\(value)\" is not a shortcut (\(error)); \(fallback)")
             }
+        }
+
+        for (name, value) in (document["appearance"] ?? [:]).sorted(by: { $0.key < $1.key }) {
+            guard name == "theme" else {
+                config.warnings.append("ignoring unknown appearance setting '\(name)'")
+                continue
+            }
+            guard let appearance = Appearance(rawValue: value.lowercased()) else {
+                config.warnings.append(
+                    "theme = \"\(value)\" is not one of \(Appearance.choices); keeping \(Appearance.default.rawValue)")
+                continue
+            }
+            config.appearance = appearance
         }
 
         // The same single press for both isn't fatal — the toggle takes it —
@@ -509,6 +549,12 @@ extension ShortcutConfig {
 
         \(bindings)
 
+        # Look of the settings window and the dictation pill: \(Appearance.choices).
+
+        [appearance]
+
+        # theme = "\(Appearance.default.rawValue)"
+
         """
     }
 
@@ -547,7 +593,24 @@ extension ShortcutConfig {
     /// the end of that table (or a new table) when there is none. Everything
     /// else in the file, comments included, is kept as written.
     static func rebinding(_ action: ShortcutAction, to trigger: Trigger, in text: String) -> String {
-        let binding = "\(action.rawValue) = \"\(trigger.configSpelling)\"  # \(action.summary)"
+        setting(
+            action.rawValue, in: "shortcuts",
+            to: "\(action.rawValue) = \"\(trigger.configSpelling)\"  # \(action.summary)",
+            in: text)
+    }
+
+    /// `text` with `theme` under `[appearance]` set to `appearance`, by the
+    /// same in-place rules as `rebinding`.
+    static func settingAppearance(_ appearance: Appearance, in text: String) -> String {
+        setting(
+            "theme", in: "appearance",
+            to: "theme = \"\(appearance.rawValue)\"  # \(Appearance.choices)",
+            in: text)
+    }
+
+    /// `text` with `key`'s line under `[table]` replaced by `binding`, or
+    /// `binding` added when the key has no line there yet.
+    private static func setting(_ key: String, in tableName: String, to binding: String, in text: String) -> String {
         var lines = text.components(separatedBy: "\n")
 
         var header: Int?
@@ -559,7 +622,7 @@ extension ShortcutConfig {
                     end = index
                     break
                 }
-                if tableName(line) == "shortcuts" { header = index }
+                if Self.tableName(line) == tableName { header = index }
                 continue
             }
             guard header != nil else { continue }
@@ -568,7 +631,7 @@ extension ShortcutConfig {
                 body = body.dropFirst().drop(while: { $0 == " " || $0 == "\t" })
             }
             guard let equals = body.firstIndex(of: "=") else { continue }
-            if body[..<equals].trimmingCharacters(in: .whitespaces) == action.rawValue {
+            if body[..<equals].trimmingCharacters(in: .whitespaces) == key {
                 lines[index] = binding
                 return lines.joined(separator: "\n")
             }
@@ -578,7 +641,7 @@ extension ShortcutConfig {
             var result = text
             if !result.isEmpty, !result.hasSuffix("\n") { result += "\n" }
             if !result.isEmpty { result += "\n" }
-            return result + "[shortcuts]\n\(binding)\n"
+            return result + "[\(tableName)]\n\(binding)\n"
         }
         // Add to the table, ahead of the blank lines that separate it from
         // whatever follows.
@@ -603,9 +666,19 @@ extension ShortcutConfig {
         _ action: ShortcutAction, to trigger: Trigger,
         at destination: URL? = nil
     ) throws -> URL {
+        try write(at: destination) { rebinding(action, to: trigger, in: $0) }
+    }
+
+    /// Persists the theme the same way `rebind` persists a shortcut.
+    @discardableResult
+    static func setAppearance(_ appearance: Appearance, at destination: URL? = nil) throws -> URL {
+        try write(at: destination) { settingAppearance(appearance, in: $0) }
+    }
+
+    private static func write(at destination: URL?, _ edit: (String) -> String) throws -> URL {
         let url = destination ?? Shortcuts.config.source ?? userConfigPath()
         let existing = (try? String(contentsOf: url, encoding: .utf8)) ?? template
-        let updated = rebinding(action, to: trigger, in: existing)
+        let updated = edit(existing)
         try FileManager.default.createDirectory(
             at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try updated.write(to: url, atomically: true, encoding: .utf8)
