@@ -21,15 +21,21 @@ MACOS_DIR = $(CONTENTS)/MacOS
 RESOURCES = $(CONTENTS)/Resources
 
 SDK = $(shell xcrun --show-sdk-path)
-SPM_BIN = .build/release
+# Arch-specific: .build/release is a symlink to whichever arch built last.
+SPM_BIN = .build/$(ARCH)-apple-macosx/release
 
-.PHONY: all app run test clean
+VERSION = $(shell plutil -extract CFBundleShortVersionString raw Info.plist)
+ARCH_LABEL = $(if $(filter arm64,$(ARCH)),Apple-Silicon,Intel)
+DMG = $(BUILD_DIR)/$(APP_NAME)-$(VERSION)-$(ARCH_LABEL).dmg
+DMG_STAGING = $(BUILD_DIR)/dmg-$(ARCH)
+
+.PHONY: all app run test clean release release-all
 
 all: app
 
 # Built with SwiftPM; the bundle is assembled by hand.
 app: $(SOURCES) Package.swift Info.plist Dictation.entitlements $(ICON_FILE)
-	swift build -c release
+	swift build -c release --arch $(ARCH)
 	@mkdir -p "$(MACOS_DIR)" "$(RESOURCES)"
 	@cp "$(SPM_BIN)/$(APP_NAME)" "$(MACOS_DIR)/$(APP_NAME)"
 	@cp "$(ICON_FILE)" "$(RESOURCES)/"
@@ -67,6 +73,21 @@ $(ICON_FILE): $(ICON_SOURCE)
 
 run: app
 	open "$(APP_BUNDLE)"
+
+# A drag-to-Applications DMG for one architecture (ARCH=arm64 or x86_64).
+release: app
+	@rm -rf "$(DMG_STAGING)" "$(DMG)"
+	@mkdir -p "$(DMG_STAGING)"
+	@cp -R "$(APP_BUNDLE)" "$(DMG_STAGING)/"
+	@ln -s /Applications "$(DMG_STAGING)/Applications"
+	@hdiutil create -quiet -volname "$(APP_NAME)" -srcfolder "$(DMG_STAGING)" -ov -format UDZO "$(DMG)"
+	@rm -rf "$(DMG_STAGING)"
+	@echo "Packaged $(DMG)"
+
+# Both DMGs, one after the other; the bundle dir is shared, so not parallel.
+release-all:
+	$(MAKE) release ARCH=arm64
+	$(MAKE) release ARCH=x86_64
 
 test:
 	@mkdir -p $(BUILD_DIR)

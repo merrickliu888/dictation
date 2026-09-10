@@ -5,9 +5,12 @@
 </div>
 
 ## Quick Start
-1. Build and run: `make run` (needs Xcode 16 or later).
-2. Grant the three permissions in the setup window: Microphone, Speech Recognition, and Accessibility.
-3. Click into any text field, hold `fn`, say something, and let go. The words appear where the cursor is.
+1. Download Dictation for [Apple Silicon](https://github.com/merrickliu888/dictation/releases/download/v0.1.0/Dictation-0.1.0-Apple-Silicon.dmg) or [Intel](https://github.com/merrickliu888/dictation/releases/download/v0.1.0/Dictation-0.1.0-Intel.dmg), or build it yourself with `make run` (needs Xcode 16 or later).
+2. Open the DMG and drag Dictation into Applications. The app is not signed with an Apple Developer ID, so after macOS blocks the first launch, open **System Settings → Privacy & Security**, scroll to **Security**, click **Open Anyway**, then confirm **Open**.
+3. Grant the three permissions in the setup window: Microphone, Speech Recognition, and Accessibility.
+4. Click into any text field, hold `fn`, say something, and let go. The words appear where the cursor is.
+
+Requires macOS 15 or later.
 
 ## Overview
 
